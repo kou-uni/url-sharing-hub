@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Plus, CalendarIcon, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, CalendarIcon, Trash2, ChevronLeft, ChevronRight, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,7 +20,7 @@ import {
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import Link from "next/link"
-import { getSessions, createSession, deleteSession } from "@/app/actions/sessions"
+import { getSessions, createSession, deleteSession, updateSession } from "@/app/actions/sessions"
 
 interface StudySession {
   id: number
@@ -116,12 +116,15 @@ function SimpleDatePicker({
 export default function HomePage() {
   const [sessions, setSessions] = useState<StudySession[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
+  const [editingSession, setEditingSession] = useState<StudySession | null>(null)
   const [newSession, setNewSession] = useState({
     date: "",
     title: "",
     agenda: "",
   })
   const [selectedDate, setSelectedDate] = useState<Date>()
+  const [editSelectedDate, setEditSelectedDate] = useState<Date>()
   const [isLoading, setIsLoading] = useState(true)
 
   const handleDateSelect = (date: Date) => {
@@ -131,6 +134,17 @@ export default function HomePage() {
     const day = String(date.getDate()).padStart(2, "0")
     const localDateStr = `${year}-${month}-${day}`
     setNewSession({ ...newSession, date: localDateStr })
+  }
+
+  const handleEditDateSelect = (date: Date) => {
+    setEditSelectedDate(date)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const localDateStr = `${year}-${month}-${day}`
+    if (editingSession) {
+      setEditingSession({ ...editingSession, date: localDateStr })
+    }
   }
 
   useEffect(() => {
@@ -167,6 +181,33 @@ export default function HomePage() {
     } catch (error) {
       console.error("[v0] Error creating session:", error)
       alert("登録に失敗しました")
+    }
+  }
+
+  const handleEditSession = (session: StudySession) => {
+    setEditingSession(session)
+    const sessionDate = new Date(session.date)
+    setEditSelectedDate(sessionDate)
+    setIsEditDrawerOpen(true)
+  }
+
+  const handleUpdateSession = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingSession) return
+
+    try {
+      await updateSession(editingSession.id, {
+        date: editingSession.date,
+        title: editingSession.title,
+        agenda: editingSession.agenda,
+      })
+      await loadSessions()
+      setIsEditDrawerOpen(false)
+      setEditingSession(null)
+      setEditSelectedDate(undefined)
+    } catch (error) {
+      console.error("[v0] Error updating session:", error)
+      alert("更新に失敗しました")
     }
   }
 
@@ -243,6 +284,14 @@ export default function HomePage() {
                           </Link>
                           <Button
                             size="sm"
+                            variant="outline"
+                            className="h-9 w-9 p-0 font-light bg-transparent"
+                            onClick={() => handleEditSession(session)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="ghost"
                             className="h-9 w-9 p-0 hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => handleDeleteSession(session.id)}
@@ -259,6 +308,8 @@ export default function HomePage() {
           </div>
         </Card>
       </main>
+
+      {/* Add Session Drawer */}
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DrawerContent>
           <DrawerHeader className="text-left">
@@ -302,6 +353,63 @@ export default function HomePage() {
             <DrawerFooter className="px-0 pt-4">
               <Button type="submit" className="h-12 w-full">
                 保存
+              </Button>
+              <DrawerClose asChild>
+                <Button type="button" variant="outline" className="h-12 w-full bg-transparent">
+                  キャンセル
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </form>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Edit Session Drawer */}
+      <Drawer open={isEditDrawerOpen} onOpenChange={setIsEditDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>勉強会を編集</DrawerTitle>
+            <DrawerDescription>勉強会の情報を編集してください</DrawerDescription>
+          </DrawerHeader>
+          <form onSubmit={handleUpdateSession} className="px-4 pb-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">日付</Label>
+                <div className="text-sm text-muted-foreground mb-2">
+                  {editSelectedDate
+                    ? format(editSelectedDate, "yyyy年M月d日", { locale: ja })
+                    : "日付を選択してください"}
+                </div>
+                <SimpleDatePicker selected={editSelectedDate} onSelect={handleEditDateSelect} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">表題</Label>
+                <Input
+                  id="edit-title"
+                  type="text"
+                  placeholder="勉強会のタイトル"
+                  value={editingSession?.title || ""}
+                  onChange={(e) => editingSession && setEditingSession({ ...editingSession, title: e.target.value })}
+                  className="h-12"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-agenda">アジェンダ</Label>
+                <Input
+                  id="edit-agenda"
+                  type="text"
+                  placeholder="簡単なアジェンダ"
+                  value={editingSession?.agenda || ""}
+                  onChange={(e) => editingSession && setEditingSession({ ...editingSession, agenda: e.target.value })}
+                  className="h-12"
+                  required
+                />
+              </div>
+            </div>
+            <DrawerFooter className="px-0 pt-4">
+              <Button type="submit" className="h-12 w-full">
+                更新
               </Button>
               <DrawerClose asChild>
                 <Button type="button" variant="outline" className="h-12 w-full bg-transparent">
