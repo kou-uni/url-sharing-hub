@@ -107,13 +107,13 @@ export function NewsTab({ sessionId }: NewsTabProps) {
             <Card key={post.id} className="p-4">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <a href={post.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 group">
-                  <h3 className="font-light text-base text-foreground mb-1 group-hover:text-primary transition-colors line-clamp-2">
+                  <h3 className="text-base mb-1 group-hover:text-primary transition-colors line-clamp-2 text-muted-foreground font-light">
                     {post.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-2 line-clamp-2 font-light">{post.description}</p>
+                  <p className="mb-1 group-hover:text-primary transition-colors line-clamp-2 font-light text-xs text-ring">{post.description}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-light">
                     <ExternalLink className="h-3 w-3" />
-                    <span className="truncate break-all">{post.url}</span>
+                    <span className="truncate break-all underline text-lg font-normal">{post.url}</span>
                   </div>
                 </a>
                 <Button
